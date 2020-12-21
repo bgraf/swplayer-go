@@ -1,0 +1,4 @@
+github.com/Wessie/appdirs v0.0.0-20141031215813-6573e894f8e2 h1:fqg13ru+I2eUOcsjpZkPITUSdbLUgTdRVnSy/BVTiig=
+github.com/Wessie/appdirs v0.0.0-20141031215813-6573e894f8e2/go.mod h1:MxPYge+YNbiBwX/6rN+6zOX1fWQAfKj/RxwJpSImex4=
+github.com/spf13/pflag v1.0.5 h1:iy+VFUOCP1a+8yFto/drg2CJ5u0yRoB7fZw3DKv/JXA=
+github.com/spf13/pflag v1.0.5/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
