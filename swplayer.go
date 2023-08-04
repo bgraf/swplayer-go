@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/SvantjeJung/swplayer/logfile"
-	"github.com/spf13/pflag"
-	"math/rand"
 	"os"
 	"os/exec"
 	"strings"
-	"time"
+
+	"github.com/SvantjeJung/swplayer/logfile"
+	"github.com/spf13/pflag"
 )
 
 var numTitles int = 1
@@ -32,21 +31,9 @@ func main() {
 		panic(err)
 	}
 
-	// Apply history from logfile and remove recently played titles.
-	// If not enough titles remain after history application, we keep the original list.
-	files = filterByPlayLog(files)
-
-	if len(files) < numTitles {
-		fmt.Fprintf(os.Stderr, "requested to play %d titles, but only %d available\n", numTitles, len(files))
-		numTitles = len(files)
+	for i := 0; i < numTitles; i++ {
+		performSingleFile(files)
 	}
-	if numTitles == 0 {
-		fmt.Fprintf(os.Stderr, "no files to play!\n")
-		os.Exit(1)
-	}
-
-	shuffleStringSlice(files)
-	playFiles(files[:numTitles])
 
 	if !avoidShutdown {
 		err := performShutdown()
@@ -54,6 +41,32 @@ func main() {
 			panic(err)
 		}
 	}
+}
+
+func performSingleFile(files []string) error {
+	lg := logfile.NewDefaultLogfile()
+
+	historyEntries, err := lg.ReadEntries()
+	if err != nil {
+		fmt.Printf("no history")
+	}
+
+	nextFile, err := chooseFile(files, historyEntries)
+	if err != nil {
+		return err
+	}
+
+	if err := lg.AppendTitle(nextFile); err != nil {
+		return err
+	}
+
+	fmt.Println("Playing:", nextFile)
+	if err := playFile(playerName, nextFile); err != nil {
+		return err
+
+	}
+
+	return nil
 }
 
 func performShutdown() error {
@@ -80,26 +93,6 @@ func parseProgramArguments() {
 	pflag.Parse()
 }
 
-
-func playFiles(files []string) {
-	for _, file := range files {
-		// Write to play log file
-		if playLog != nil {
-			err := playLog.AppendTitle(file)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "could not write to logfile: %s", err)
-			}
-		}
-
-		// Play file
-		fmt.Println("Playing:", file)
-		err := playFile(playerName, file)
-		if err != nil {
-			panic(err)
-		}
-	}
-}
-
 func setupPlayLog() {
 	playLog = new(logfile.Logfile)
 	*playLog = logfile.NewDefaultLogfile()
@@ -108,45 +101,6 @@ func setupPlayLog() {
 		fmt.Fprintf(os.Stderr, "could not ensure directory of logfile:\n  %s\n", playLog.Path())
 		playLog = nil
 	}
-}
-
-func filterByPlayLog(files []string) []string {
-	if playLog == nil {
-		return files
-	}
-	logEntries, err := playLog.ReadEntries()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "could not read log entries: %s", err)
-	}
-
-	numEntries := len(logEntries)
-	if histMax > numEntries {
-		histMax = numEntries
-	}
-	logEntries = logEntries[numEntries-histMax : numEntries]
-
-	// Create a map from string to empty-struct and use it as a set of history entries.
-	history := make(map[string]struct{})
-	for _, entry := range logEntries {
-		history[entry] = struct{}{}
-	}
-
-	// Create new list of files without those in the current history.
-	var remainingFiles []string
-	for _, path := range files {
-		if _, ok := history[path]; !ok {
-			remainingFiles = append(remainingFiles, path)
-		}
-	}
-
-	// Only use the non history files if there are sufficiently many.
-	if len(remainingFiles) >= numTitles {
-		files = remainingFiles
-	} else {
-		fmt.Fprintf(os.Stderr, "not enough titles available if history was applied, thus, the history is ignored.\n")
-	}
-
-	return files
 }
 
 func ensurePlayerAvailable() {
@@ -170,11 +124,4 @@ func getSearchPaths() []string {
 		searchPaths = append(searchPaths, ".")
 	}
 	return searchPaths
-}
-
-func shuffleStringSlice(s []string) {
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	rng.Shuffle(len(s), func(i, j int) {
-		s[i], s[j] = s[j], s[i]
-	})
 }

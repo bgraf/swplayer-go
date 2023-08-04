@@ -62,7 +62,7 @@ func (lf *Logfile) EnsureDirectory() error {
 	return err
 }
 
-// ReadEntries provides all entries stored in the logfile.
+// ReadEntries returns the entries of the history from oldest to newest.
 func (lf *Logfile) ReadEntries() ([]string, error) {
 	f, err := os.Open(lf.path)
 	if err != nil {
